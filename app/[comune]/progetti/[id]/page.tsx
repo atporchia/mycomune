@@ -118,14 +118,37 @@ export default async function ProgettoDetailPage({
         sourceUrl={project.source_url ?? source?.source_url}
       />
 
-      {/* AI explanation stub — Phase 3 */}
+      {/* AI explanation */}
       <section className="mb-8 rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-4">
         <h2 className="text-sm font-semibold text-emerald-800 mb-2">
           Spiegazione in italiano semplice
         </h2>
-        <p className="text-sm text-emerald-700">
-          La spiegazione AI e le domande suggerite ai cittadini saranno disponibili nella prossima versione.
-        </p>
+        {project.ai_explanation ? (
+          <>
+            <p className="text-sm text-emerald-900 leading-relaxed mb-4">
+              {project.ai_explanation}
+            </p>
+            {project.ai_suggested_questions && project.ai_suggested_questions.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-emerald-700 mb-2">
+                  Domande che puoi fare al tuo Comune:
+                </p>
+                <ul className="space-y-1.5">
+                  {project.ai_suggested_questions.map((q: string, i: number) => (
+                    <li key={i} className="flex gap-2 text-sm text-emerald-800">
+                      <span className="shrink-0 text-emerald-400">›</span>
+                      <span>{q}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-sm text-emerald-600 italic">
+            La spiegazione verrà generata al prossimo aggiornamento settimanale.
+          </p>
+        )}
       </section>
 
       {/* Source link */}

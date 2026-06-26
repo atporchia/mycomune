@@ -9,7 +9,7 @@ import { normalizeOpenPNRRRow, type NormalizedProject } from './normalize'
  * in your environment. The default below points to their typical export path.
  */
 const DEFAULT_CSV_URL =
-  process.env.OPENPNRR_CSV_URL ?? 'https://openpnrr.it/export/projects.csv'
+  process.env.OPENPNRR_CSV_URL || 'https://openpnrr.it/export/projects.csv'
 
 export interface FetchResult {
   records: NormalizedProject[]

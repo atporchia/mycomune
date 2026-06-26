@@ -109,6 +109,16 @@ export default async function ComunePage({
         </h1>
       </div>
 
+      {/* AI summary */}
+      {comune.ai_summary && (
+        <section className="mb-8 rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-600 mb-2">
+            Panoramica PNRR
+          </p>
+          <p className="text-sm text-emerald-900 leading-relaxed">{comune.ai_summary}</p>
+        </section>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         <StatCard label="Progetti PNRR" value={comune.total_projects.toLocaleString('it-IT')} />
