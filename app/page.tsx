@@ -14,7 +14,7 @@ export default function Home() {
 
       <p className="mb-10 max-w-xl text-lg text-gray-500">
         Cerca il tuo Comune e scopri i progetti PNRR finanziati con denaro pubblico.
-        Dati ufficiali, spiegati in italiano chiaro.
+        Dati ufficiali, spiegati in modo chiaro.
       </p>
 
       <ComuneSearch />

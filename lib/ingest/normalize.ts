@@ -79,12 +79,13 @@ function computeWatchSignals(p: NormalizedProject): string[] {
 }
 
 export function normalizeOpenPNRRRow(row: Record<string, string>): NormalizedProject | null {
+  // progetto_id is the primary key; fall back to CUP if absent
   const projectId =
-    pick(row, 'CUP', 'cup', 'codice_cup', 'ID', 'id', 'codice_progetto') ?? null
+    pick(row, 'progetto_id', 'CUP', 'cup', 'codice_cup', 'ID', 'id', 'codice_progetto') ?? null
 
   const title =
     pick(row,
-      'TITOLO_PROGETTO', 'titolo_progetto', 'TITOLO', 'titolo',
+      'titolo', 'TITOLO_PROGETTO', 'titolo_progetto', 'TITOLO',
       'DENOMINAZIONE', 'denominazione', 'OGGETTO', 'oggetto'
     ) ?? null
 
@@ -94,22 +95,23 @@ export function normalizeOpenPNRRRow(row: Record<string, string>): NormalizedPro
     project_id:           projectId,
     source:               'openpnrr',
     source_url:           null,
-    cup_code:             pick(row, 'CUP', 'cup', 'codice_cup') ?? null,
+    cup_code:             pick(row, 'cup', 'CUP', 'codice_cup') ?? null,
     title,
-    description:          pick(row, 'DESCRIZIONE', 'descrizione', 'OGGETTO', 'oggetto') ?? null,
-    amount_total:         parseAmount(pick(row, 'IMPORTO_TOTALE', 'importo_totale', 'FINANZIAMENTO', 'finanziamento', 'IMPORTO', 'importo')),
-    amount_public:        parseAmount(pick(row, 'IMPORTO_PUBBLICO', 'importo_pubblico', 'QUOTA_PUBBLICA', 'quota_pubblica')),
-    mission:              pick(row, 'MISSIONE', 'missione', 'MISSION', 'mission') ?? null,
+    description:          pick(row, 'descrizione', 'DESCRIZIONE', 'OGGETTO', 'oggetto') ?? null,
+    amount_total:         parseAmount(pick(row, 'finanziamento_totale', 'IMPORTO_TOTALE', 'importo_totale', 'finanziamento', 'IMPORTO', 'importo')),
+    amount_public:        parseAmount(pick(row, 'finanziamento_totale_pubblico', 'IMPORTO_PUBBLICO', 'importo_pubblico', 'QUOTA_PUBBLICA', 'quota_pubblica')),
+    mission:              pick(row, 'codice_misura', 'MISSIONE', 'missione', 'MISSION', 'mission') ?? null,
     component:            pick(row, 'COMPONENTE', 'componente', 'COMPONENT', 'component') ?? null,
-    measure:              pick(row, 'MISURA', 'misura', 'MEASURE', 'measure', 'INVESTIMENTO', 'investimento') ?? null,
-    category:             pick(row, 'SETTORE', 'settore', 'CATEGORIA', 'categoria', 'TIPOLOGIA', 'tipologia') ?? null,
+    measure:              pick(row, 'codice_misura', 'MISURA', 'misura', 'MEASURE', 'measure', 'INVESTIMENTO', 'investimento') ?? null,
+    category:             pick(row, 'SETTORE', 'settore', 'CATEGORIA', 'categoria', 'TIPOLOGIA') ?? null,
     status:               pick(row, 'STATO', 'stato', 'STATO_PROGETTO', 'stato_progetto') ?? null,
     progress_percentage:  parseFloat_(pick(row, 'AVANZAMENTO', 'avanzamento', 'PERCENTUALE_AVANZAMENTO', 'percentuale_avanzamento')),
-    implementing_entity:  pick(row, 'SOGGETTO_ATTUATORE', 'soggetto_attuatore', 'ENTE_ATTUATORE', 'ente_attuatore', 'ATTUATORE') ?? null,
+    implementing_entity:  pick(row, 'soggetto_attuatore_denominazione', 'SOGGETTO_ATTUATORE', 'soggetto_attuatore', 'ENTE_ATTUATORE', 'ente_attuatore') ?? null,
     beneficiary_entity:   pick(row, 'SOGGETTO_BENEFICIARIO', 'soggetto_beneficiario', 'BENEFICIARIO') ?? null,
-    comune:               pick(row, 'COMUNE', 'comune', 'LOCALITA', 'localita', 'CITTA', 'citta') ?? null,
-    province:             pick(row, 'PROVINCIA', 'provincia', 'SIGLA_PROVINCIA', 'sigla_provincia') ?? null,
-    region:               pick(row, 'REGIONE', 'regione') ?? null,
+    // Location fields are injected by the fetcher from progetti_territori.csv
+    comune:               pick(row, '_comune', 'COMUNE', 'comune', 'LOCALITA', 'localita') ?? null,
+    province:             pick(row, '_province', 'PROVINCIA', 'provincia', 'SIGLA_PROVINCIA', 'sigla_provincia') ?? null,
+    region:               pick(row, '_region', 'REGIONE', 'regione') ?? null,
     latitude:             parseFloat_(pick(row, 'LAT', 'lat', 'LATITUDINE', 'latitudine')),
     longitude:            parseFloat_(pick(row, 'LON', 'lon', 'LONGITUDINE', 'longitudine')),
     start_date:           parseDate(pick(row, 'DATA_INIZIO', 'data_inizio', 'DATA_AVVIO', 'data_avvio')),
