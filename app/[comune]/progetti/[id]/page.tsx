@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { supabaseAdmin } from '@/lib/supabase'
+import sql from '@/lib/db'
 import { toTitleCase, formatEur, formatDate } from '@/lib/format'
 import FreshnessBadge from '@/app/components/FreshnessBadge'
 import { generateProjectExplanation } from '@/lib/ingest/ai'
@@ -13,39 +13,36 @@ export default async function ProgettoDetailPage({
   const { comune: comuneSlug, id } = await params
   const comuneName = decodeURIComponent(comuneSlug)
 
-  const { data: project, error } = await supabaseAdmin
-    .from('projects')
-    .select('*')
-    .eq('id', id)
-    .ilike('comune', comuneName)
-    .single()
+  const [project, source] = await Promise.all([
+    sql`SELECT * FROM projects WHERE id = ${id} AND comune ILIKE ${comuneName} LIMIT 1`
+      .then(r => r[0] ?? null),
+    sql`
+      SELECT source_url, last_checked_at, declared_update_date
+      FROM source_metadata
+      WHERE source_name = 'openpnrr'
+      LIMIT 1
+    `.then(r => r[0] ?? null),
+  ])
 
-  if (error || !project) notFound()
+  if (!project) notFound()
 
-  // Lazy AI generation: generate on first visit, then serve from DB forever
+  // Lazy AI generation: generate on first visit, cache in DB forever
   if (!project.ai_explanation && process.env.GOOGLE_AI_API_KEY) {
     try {
-      const ai = await generateProjectExplanation(project)
-      await supabaseAdmin
-        .from('projects')
-        .update({
-          ai_explanation: ai.explanation,
-          ai_suggested_questions: ai.questions,
-          ai_generated_at: new Date().toISOString(),
-        })
-        .eq('id', project.id)
+      const ai = await generateProjectExplanation(project as Parameters<typeof generateProjectExplanation>[0])
+      await sql`
+        UPDATE projects SET
+          ai_explanation         = ${ai.explanation},
+          ai_suggested_questions = ${ai.questions},
+          ai_generated_at        = NOW()
+        WHERE id = ${project.id}
+      `
       project.ai_explanation = ai.explanation
       project.ai_suggested_questions = ai.questions
     } catch {
       // AI generation failed silently — page still renders without explanation
     }
   }
-
-  const { data: source } = await supabaseAdmin
-    .from('source_metadata')
-    .select('source_url, last_checked_at, declared_update_date')
-    .eq('source_name', project.source ?? 'openpnrr')
-    .single()
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-12">
@@ -117,11 +114,7 @@ export default async function ProgettoDetailPage({
           <Field label="Stato" value={project.status} />
           <Field
             label="Avanzamento"
-            value={
-              project.progress_percentage != null
-                ? `${project.progress_percentage}%`
-                : null
-            }
+            value={project.progress_percentage != null ? `${project.progress_percentage}%` : null}
           />
           <Field label="Ente attuatore" value={project.implementing_entity} />
           <Field label="Ente beneficiario" value={project.beneficiary_entity} />
@@ -141,7 +134,7 @@ export default async function ProgettoDetailPage({
       {/* AI explanation */}
       <section className="mb-8 rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-4">
         <h2 className="text-sm font-semibold text-emerald-800 mb-2">
-          Spiegazione in italiano semplice
+          Spiegazione in modo semplice
         </h2>
         {project.ai_explanation ? (
           <>
@@ -166,7 +159,7 @@ export default async function ProgettoDetailPage({
           </>
         ) : (
           <p className="text-sm text-emerald-600 italic">
-            La spiegazione verrà generata al prossimo aggiornamento settimanale.
+            La spiegazione verrà generata al prossimo aggiornamento.
           </p>
         )}
       </section>

@@ -44,7 +44,7 @@ create index if not exists projects_province_idx     on projects (province);
 create index if not exists projects_region_idx       on projects (region);
 create index if not exists projects_source_idx       on projects (source);
 create index if not exists projects_amount_total_idx on projects (amount_total desc);
-create index if not exists projects_watch_signals_idx on projects using gin (watch_signals);
+create inverted index if not exists projects_watch_signals_idx on projects (watch_signals);
 
 -- ----------------------------------------------------------------
 -- comuni: pre-aggregated stats per Comune, rebuilt after each ingest

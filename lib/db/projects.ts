@@ -1,15 +1,10 @@
-import { supabaseAdmin } from '../supabase'
+import sql from '../db'
 import type { NormalizedProject } from '../ingest/normalize'
 
-/**
- * Upsert a batch of normalized projects.
- * Returns counts of inserted vs updated rows.
- */
 export async function upsertProjects(
   records: NormalizedProject[],
-  batchSize = 500
+  batchSize = 200
 ): Promise<{ inserted: number; updated: number }> {
-  let inserted = 0
   let updated = 0
   const now = new Date().toISOString()
 
@@ -48,30 +43,66 @@ export async function upsertProjects(
       watch_signals:            r.watch_signals,
     }))
 
-    const { error, count } = await supabaseAdmin
-      .from('projects')
-      .upsert(rows, {
-        onConflict: 'source,project_id',
-        count: 'exact',
-      })
-
-    if (error) throw new Error(`Upsert error: ${error.message}`)
-    // count reflects all affected rows; we can't distinguish insert vs update
-    // without a more complex approach, so we treat everything as updated here
-    // and caller can compare with pre-existing count if needed.
-    updated += count ?? 0
+    const result = await sql`
+      INSERT INTO projects ${sql(rows)}
+      ON CONFLICT (source, project_id) DO UPDATE SET
+        source_url               = EXCLUDED.source_url,
+        cup_code                 = EXCLUDED.cup_code,
+        title                    = EXCLUDED.title,
+        description              = EXCLUDED.description,
+        amount_total             = EXCLUDED.amount_total,
+        amount_public            = EXCLUDED.amount_public,
+        mission                  = EXCLUDED.mission,
+        component                = EXCLUDED.component,
+        measure                  = EXCLUDED.measure,
+        category                 = EXCLUDED.category,
+        status                   = EXCLUDED.status,
+        progress_percentage      = EXCLUDED.progress_percentage,
+        implementing_entity      = EXCLUDED.implementing_entity,
+        beneficiary_entity       = EXCLUDED.beneficiary_entity,
+        comune                   = EXCLUDED.comune,
+        province                 = EXCLUDED.province,
+        region                   = EXCLUDED.region,
+        latitude                 = EXCLUDED.latitude,
+        longitude                = EXCLUDED.longitude,
+        start_date               = EXCLUDED.start_date,
+        expected_end_date        = EXCLUDED.expected_end_date,
+        last_source_update       = EXCLUDED.last_source_update,
+        last_seen_at             = EXCLUDED.last_seen_at,
+        last_checked_by_watchdog = EXCLUDED.last_checked_by_watchdog,
+        last_normalized_refresh  = EXCLUDED.last_normalized_refresh,
+        watch_signals            = EXCLUDED.watch_signals
+    `
+    updated += result.count
   }
 
-  return { inserted, updated }
+  return { inserted: 0, updated }
 }
 
-/**
- * Rebuild the comuni aggregates table from the projects table.
- * Delegates to a Postgres function so the full 300k+ row dataset is
- * aggregated in-DB without hitting the JS client's default 1k row limit.
- * Requires migration 003_rebuild_comuni_fn.sql to be applied first.
- */
 export async function rebuildComuniAggregates(): Promise<void> {
-  const { error } = await supabaseAdmin.rpc('rebuild_comuni_aggregates')
-  if (error) throw new Error(`comuni rebuild failed: ${error.message}`)
+  await sql`
+    INSERT INTO comuni (nome, province, region, total_projects, total_funding, avg_project_value, last_normalized_refresh, last_watchdog_check)
+    SELECT
+      UPPER(TRIM(comune))                                                AS nome,
+      MAX(province)                                                      AS province,
+      MAX(region)                                                        AS region,
+      COUNT(*)::int                                                      AS total_projects,
+      COALESCE(SUM(amount_total), 0)                                     AS total_funding,
+      CASE WHEN COUNT(*) > 0
+           THEN COALESCE(SUM(amount_total), 0) / COUNT(*)
+           ELSE 0 END                                                    AS avg_project_value,
+      NOW()                                                              AS last_normalized_refresh,
+      NOW()                                                              AS last_watchdog_check
+    FROM projects
+    WHERE comune IS NOT NULL AND TRIM(comune) != ''
+    GROUP BY UPPER(TRIM(comune))
+    ON CONFLICT (nome) DO UPDATE SET
+      province                = EXCLUDED.province,
+      region                  = EXCLUDED.region,
+      total_projects          = EXCLUDED.total_projects,
+      total_funding           = EXCLUDED.total_funding,
+      avg_project_value       = EXCLUDED.avg_project_value,
+      last_normalized_refresh = EXCLUDED.last_normalized_refresh,
+      last_watchdog_check     = EXCLUDED.last_watchdog_check
+  `
 }

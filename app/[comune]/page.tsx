@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { supabaseAdmin } from '@/lib/supabase'
+import sql from '@/lib/db'
 import { toTitleCase, formatEur, formatDate } from '@/lib/format'
 import FreshnessBadge from '@/app/components/FreshnessBadge'
 
@@ -12,34 +12,24 @@ export default async function ComunePage({
   const { comune: comuneSlug } = await params
   const comuneName = decodeURIComponent(comuneSlug)
 
-  const [comuneRes, projectsRes, sourceRes] = await Promise.all([
-    supabaseAdmin
-      .from('comuni')
-      .select('*')
-      .ilike('nome', comuneName)
-      .single(),
-    supabaseAdmin
-      .from('projects')
-      .select(
-        'id, title, amount_total, category, mission, implementing_entity, watch_signals, last_seen_at'
-      )
-      .ilike('comune', comuneName)
-      .order('amount_total', { ascending: false })
-      .limit(200),
-    supabaseAdmin
-      .from('source_metadata')
-      .select('source_url, last_checked_at, declared_update_date')
-      .eq('source_name', 'openpnrr')
-      .single(),
+  const [comune, projects, source] = await Promise.all([
+    sql`SELECT * FROM comuni WHERE nome ILIKE ${comuneName} LIMIT 1`.then(r => r[0] ?? null),
+    sql`
+      SELECT id, title, amount_total, category, mission, implementing_entity, watch_signals, last_seen_at
+      FROM projects
+      WHERE comune ILIKE ${comuneName}
+      ORDER BY amount_total DESC NULLS LAST
+      LIMIT 200
+    `,
+    sql`
+      SELECT source_url, last_checked_at, declared_update_date
+      FROM source_metadata
+      WHERE source_name = 'openpnrr'
+      LIMIT 1
+    `.then(r => r[0] ?? null),
   ])
 
-  if (comuneRes.error || !comuneRes.data) {
-    notFound()
-  }
-
-  const comune = comuneRes.data
-  const projects = projectsRes.data ?? []
-  const source = sourceRes.data
+  if (!comune) notFound()
 
   if (comune.total_projects === 0) {
     return (

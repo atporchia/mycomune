@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import sql from '@/lib/db'
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get('q')?.trim() ?? ''
@@ -8,16 +8,17 @@ export async function GET(request: NextRequest) {
     return Response.json({ comuni: [] })
   }
 
-  const { data, error } = await supabaseAdmin
-    .from('comuni')
-    .select('nome, province, region, total_projects, total_funding')
-    .ilike('nome', `%${q}%`)
-    .order('total_funding', { ascending: false })
-    .limit(10)
-
-  if (error) {
-    return Response.json({ error: error.message }, { status: 500 })
+  try {
+    const comuni = await sql`
+      SELECT nome, province, region, total_projects, total_funding
+      FROM comuni
+      WHERE nome ILIKE ${'%' + q + '%'}
+      ORDER BY total_funding DESC NULLS LAST
+      LIMIT 10
+    `
+    return Response.json({ comuni })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    return Response.json({ error: message }, { status: 500 })
   }
-
-  return Response.json({ comuni: data ?? [] })
 }

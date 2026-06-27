@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase'
+import sql from '@/lib/db'
 import { generateProjectExplanation, generateComuneSummary } from '@/lib/ingest/ai'
 
 const PROJECTS_BATCH = 30
@@ -13,33 +13,27 @@ export async function POST(request: NextRequest) {
 
   const results = {
     projects: { processed: 0, failed: 0 },
-    comuni: { processed: 0, failed: 0 },
+    comuni:   { processed: 0, failed: 0 },
   }
 
-  // --- Projects without AI explanation ---
-  const { data: projects, error: pErr } = await supabaseAdmin
-    .from('projects')
-    .select('id, title, description, amount_total, implementing_entity, status, category, mission, comune, watch_signals')
-    .is('ai_explanation', null)
-    .limit(PROJECTS_BATCH)
+  const projects = await sql`
+    SELECT id, title, description, amount_total, implementing_entity,
+           status, category, mission, comune, watch_signals
+    FROM projects
+    WHERE ai_explanation IS NULL
+    LIMIT ${PROJECTS_BATCH}
+  `
 
-  if (pErr) {
-    return NextResponse.json({ error: `Failed to fetch projects: ${pErr.message}` }, { status: 500 })
-  }
-
-  for (const project of projects ?? []) {
+  for (const project of projects) {
     try {
-      const ai = await generateProjectExplanation(project)
-      const { error: updateErr } = await supabaseAdmin
-        .from('projects')
-        .update({
-          ai_explanation: ai.explanation,
-          ai_suggested_questions: ai.questions,
-          ai_generated_at: new Date().toISOString(),
-        })
-        .eq('id', project.id)
-
-      if (updateErr) throw new Error(updateErr.message)
+      const ai = await generateProjectExplanation(project as Parameters<typeof generateProjectExplanation>[0])
+      await sql`
+        UPDATE projects SET
+          ai_explanation         = ${ai.explanation},
+          ai_suggested_questions = ${ai.questions},
+          ai_generated_at        = NOW()
+        WHERE id = ${project.id}
+      `
       results.projects.processed++
     } catch (err) {
       console.error(`AI generation failed for project ${project.id}:`, err)
@@ -50,33 +44,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // --- Comuni without AI summary ---
-  const { data: comuni, error: cErr } = await supabaseAdmin
-    .from('comuni')
-    .select('id, nome, province, region, total_projects, total_funding, avg_project_value')
-    .is('ai_summary', null)
-    .gt('total_projects', 0)
-    .limit(COMUNI_BATCH)
+  const comuni = await sql`
+    SELECT id, nome, province, region, total_projects, total_funding, avg_project_value
+    FROM comuni
+    WHERE ai_summary IS NULL AND total_projects > 0
+    LIMIT ${COMUNI_BATCH}
+  `
 
-  if (cErr) {
-    return NextResponse.json(
-      { error: `Failed to fetch comuni: ${cErr.message}`, projects: results.projects },
-      { status: 500 }
-    )
-  }
-
-  for (const comune of comuni ?? []) {
+  for (const comune of comuni) {
     try {
-      const ai = await generateComuneSummary(comune)
-      const { error: updateErr } = await supabaseAdmin
-        .from('comuni')
-        .update({
-          ai_summary: ai.summary,
-          ai_summary_generated_at: new Date().toISOString(),
-        })
-        .eq('id', comune.id)
-
-      if (updateErr) throw new Error(updateErr.message)
+      const ai = await generateComuneSummary(comune as Parameters<typeof generateComuneSummary>[0])
+      await sql`
+        UPDATE comuni SET
+          ai_summary              = ${ai.summary},
+          ai_summary_generated_at = NOW()
+        WHERE id = ${comune.id}
+      `
       results.comuni.processed++
     } catch (err) {
       console.error(`AI generation failed for comune ${comune.nome}:`, err)
@@ -84,9 +67,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    projects: results.projects,
-    comuni: results.comuni,
-  })
+  return NextResponse.json({ ok: true, projects: results.projects, comuni: results.comuni })
 }

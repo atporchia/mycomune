@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { supabaseAdmin } from '@/lib/supabase'
+import sql from '@/lib/db'
 import { toTitleCase, formatEur, formatDate } from '@/lib/format'
 import FreshnessBadge from '@/app/components/FreshnessBadge'
 
@@ -26,48 +26,42 @@ export default async function ProgettiPage({
 
   const comuneName = decodeURIComponent(comuneSlug)
 
-  const q = String(filters.q ?? '')
+  const q        = String(filters.q        ?? '')
   const categoria = String(filters.categoria ?? '')
-  const segnale = String(filters.segnale ?? '')
-  const pagina = Math.max(1, parseInt(String(filters.pagina ?? '1'), 10))
+  const segnale  = String(filters.segnale  ?? '')
+  const pagina   = Math.max(1, parseInt(String(filters.pagina ?? '1'), 10))
+  const from     = (pagina - 1) * PAGE_SIZE
 
-  const from = (pagina - 1) * PAGE_SIZE
-  const to = from + PAGE_SIZE - 1
+  const comune = await sql`
+    SELECT nome, province, region, total_projects, last_watchdog_check, official_source_last_update
+    FROM comuni
+    WHERE nome ILIKE ${comuneName}
+    LIMIT 1
+  `.then(r => r[0] ?? null)
 
-  // Verify comune exists
-  const { data: comune, error: comuneError } = await supabaseAdmin
-    .from('comuni')
-    .select('nome, province, region, total_projects, last_watchdog_check, official_source_last_update')
-    .ilike('nome', comuneName)
-    .single()
+  if (!comune) notFound()
 
-  if (comuneError || !comune) notFound()
+  // Build dynamic WHERE conditions
+  const conditions = [sql`comune ILIKE ${comuneName}`]
+  if (q)        conditions.push(sql`title ILIKE ${'%' + q + '%'}`)
+  if (categoria) conditions.push(sql`category ILIKE ${'%' + categoria + '%'}`)
+  if (segnale)  conditions.push(sql`${segnale} = ANY(watch_signals)`)
 
-  let query = supabaseAdmin
-    .from('projects')
-    .select(
-      'id, title, amount_total, category, mission, implementing_entity, comune, watch_signals, last_seen_at',
-      { count: 'exact' }
-    )
-    .ilike('comune', comuneName)
-    .order('amount_total', { ascending: false })
-    .range(from, to)
+  const where = conditions.reduce((a, b) => sql`${a} AND ${b}`)
 
-  if (q) query = query.ilike('title', `%${q}%`)
-  if (categoria) query = query.ilike('category', `%${categoria}%`)
-  if (segnale) query = query.contains('watch_signals', [segnale])
+  const [projects, [{ count }]] = await Promise.all([
+    sql`
+      SELECT id, title, amount_total, category, mission, implementing_entity,
+             comune, watch_signals, last_seen_at
+      FROM projects
+      WHERE ${where}
+      ORDER BY amount_total DESC NULLS LAST
+      LIMIT ${PAGE_SIZE} OFFSET ${from}
+    `,
+    sql`SELECT COUNT(*) as count FROM projects WHERE ${where}`,
+  ])
 
-  const { data: projects, count, error } = await query
-
-  if (error) {
-    return (
-      <main className="max-w-4xl mx-auto px-6 py-12">
-        <p className="text-red-500 text-sm">Errore nel caricamento dei progetti.</p>
-      </main>
-    )
-  }
-
-  const total = count ?? 0
+  const total      = Number(count)
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
   function buildUrl(overrides: Record<string, string | undefined>) {
@@ -159,7 +153,7 @@ export default async function ProgettiPage({
       </p>
 
       {/* Project list */}
-      {projects && projects.length > 0 ? (
+      {projects.length > 0 ? (
         <div className="space-y-2 mb-8">
           {projects.map((p) => (
             <Link
