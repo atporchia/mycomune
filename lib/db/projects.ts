@@ -44,7 +44,7 @@ export async function upsertProjects(
       last_seen_at:             now,
       last_checked_by_watchdog: now,
       last_normalized_refresh:  now,
-      raw_source_payload:       r.raw_source_payload,
+      raw_source_payload:       null,
       watch_signals:            r.watch_signals,
     }))
 
