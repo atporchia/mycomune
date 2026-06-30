@@ -3,6 +3,8 @@ import sql from '@/lib/db'
 import { fetchOpenPNRR } from '@/lib/ingest/openpnrr'
 import { upsertProjects, rebuildComuniAggregates } from '@/lib/db/projects'
 
+export const maxDuration = 60
+
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET
   if (!secret) return false
