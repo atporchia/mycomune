@@ -1,10 +1,10 @@
 @AGENTS.md
 
-# MyComune — project notes for Claude
+# FondiRadar — project notes for Claude
 
 ## What this project is
 
-MyComune is a civic intelligence tool for Italian citizens. It lets people search PNRR-funded public projects in their Comune, understand them in plain Italian, and receive weekly Telegram updates. See the PRD ("Comune Watchdog PRD.pdf") for full product spec.
+FondiRadar is a civic intelligence tool for Italian citizens. It lets people search PNRR-funded public projects in their Comune, understand them in plain Italian, and receive weekly Telegram updates. See the PRD ("Comune Watchdog PRD.pdf") for full product spec.
 
 ## Tech stack
 

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MyComune — Fondi PNRR e bandi aperti per ogni Comune italiano",
+  title: "FondiRadar — Fondi PNRR e bandi aperti per ogni Comune italiano",
   description:
     "Traccia i fondi PNRR del tuo Comune e scopri i bandi europei e italiani a cui puoi candidarti. Dati ufficiali, spiegati in italiano semplice.",
 };

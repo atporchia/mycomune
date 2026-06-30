@@ -11,7 +11,7 @@ export default function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
       <div className="max-w-4xl mx-auto px-6 h-12 flex items-center justify-between">
         <Link href="/" className="text-sm font-bold text-emerald-700 tracking-tight hover:text-emerald-600">
-          MyComune
+          FondiRadar
         </Link>
         <nav className="flex items-center gap-1">
           <Link

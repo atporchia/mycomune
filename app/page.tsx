@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
       <p className="mb-3 text-sm font-semibold tracking-widest text-emerald-600 uppercase">
-        MyComune
+        FondiRadar
       </p>
 
       <h1 className="mb-4 max-w-2xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl">
