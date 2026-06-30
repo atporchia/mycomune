@@ -45,7 +45,7 @@ export default async function ProgettiPage({
   const conditions = [sql`comune ILIKE ${comuneName}`]
   if (q)        conditions.push(sql`title ILIKE ${'%' + q + '%'}`)
   if (categoria) conditions.push(sql`category ILIKE ${'%' + categoria + '%'}`)
-  if (segnale)  conditions.push(sql`watch_signals @> ARRAY[${segnale}]`)
+  if (segnale)  conditions.push(sql`watch_signals @> ${[segnale]}`)
 
   const where = conditions.reduce((a, b) => sql`${a} AND ${b}`)
 

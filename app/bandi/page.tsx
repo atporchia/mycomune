@@ -59,8 +59,8 @@ export default async function BandiPage({
       FROM funding_calls
       WHERE status = 'open'
         ${q       ? sql`AND (title ILIKE ${'%' + q + '%'} OR description ILIKE ${'%' + q + '%'})` : sql``}
-        ${cat     ? sql`AND categories @> ARRAY[${cat}]` : sql``}
-        ${regione ? sql`AND regions @> ARRAY[${regione}]` : sql``}
+        ${cat     ? sql`AND categories @> ${[cat]}`     : sql``}
+        ${regione ? sql`AND regions    @> ${[regione]}` : sql``}
       ORDER BY deadline ASC NULLS LAST, title ASC
       LIMIT ${PAGE_SIZE} OFFSET ${from}
     `,
@@ -69,8 +69,8 @@ export default async function BandiPage({
       FROM funding_calls
       WHERE status = 'open'
         ${q       ? sql`AND (title ILIKE ${'%' + q + '%'} OR description ILIKE ${'%' + q + '%'})` : sql``}
-        ${cat     ? sql`AND categories @> ARRAY[${cat}]` : sql``}
-        ${regione ? sql`AND regions @> ARRAY[${regione}]` : sql``}
+        ${cat     ? sql`AND categories @> ${[cat]}`     : sql``}
+        ${regione ? sql`AND regions    @> ${[regione]}` : sql``}
     `,
   ])
 
