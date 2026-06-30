@@ -2,8 +2,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import sql from '@/lib/db'
 import { formatEur, formatDate } from '@/lib/format'
-import { generateCallExplanation } from '@/lib/ingest/ai'
-
 export default async function BandoDetailPage({
   params,
 }: {
@@ -13,23 +11,6 @@ export default async function BandoDetailPage({
 
   const [call] = await sql`SELECT * FROM funding_calls WHERE id = ${id} LIMIT 1`
   if (!call) notFound()
-
-  if (!call.ai_explanation && process.env.GOOGLE_AI_API_KEY) {
-    try {
-      const ai = await generateCallExplanation(call as Parameters<typeof generateCallExplanation>[0])
-      await sql`
-        UPDATE funding_calls SET
-          ai_explanation  = ${ai.explanation},
-          ai_tips         = ${ai.tips},
-          ai_generated_at = NOW()
-        WHERE id = ${call.id}
-      `
-      call.ai_explanation = ai.explanation
-      call.ai_tips = ai.tips
-    } catch (e) {
-      console.error('[AI bando] generation failed for id', id, e)
-    }
-  }
 
   const days = call.deadline
     ? Math.ceil((new Date(call.deadline).getTime() - Date.now()) / 86_400_000)

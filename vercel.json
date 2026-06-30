@@ -3,6 +3,10 @@
     {
       "path": "/api/ingest/calls",
       "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/ai-generate",
+      "schedule": "0 * * * *"
     }
   ]
 }

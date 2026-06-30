@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import sql from '@/lib/db'
-import { generateProjectExplanation, generateComuneSummary } from '@/lib/ingest/ai'
+import { generateProjectExplanation, generateComuneSummary, generateCallExplanation } from '@/lib/ingest/ai'
 
-const PROJECTS_BATCH = 30
-const COMUNI_BATCH = 10
+const PROJECTS_BATCH = 5
+const COMUNI_BATCH = 3
+const CALLS_BATCH = 5
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get('x-cron-secret')
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
   const results = {
     projects: { processed: 0, failed: 0 },
     comuni:   { processed: 0, failed: 0 },
+    calls:    { processed: 0, failed: 0 },
   }
 
   const projects = await sql`
@@ -67,5 +69,30 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, projects: results.projects, comuni: results.comuni })
+  const calls = await sql`
+    SELECT id, title, program, description, budget_total, deadline, categories
+    FROM funding_calls
+    WHERE ai_explanation IS NULL AND status = 'open'
+    ORDER BY last_checked_at DESC
+    LIMIT ${CALLS_BATCH}
+  `
+
+  for (const call of calls) {
+    try {
+      const ai = await generateCallExplanation(call as Parameters<typeof generateCallExplanation>[0])
+      await sql`
+        UPDATE funding_calls SET
+          ai_explanation  = ${ai.explanation},
+          ai_tips         = ${ai.tips},
+          ai_generated_at = NOW()
+        WHERE id = ${call.id}
+      `
+      results.calls.processed++
+    } catch (err) {
+      console.error(`AI generation failed for call ${call.id}:`, err)
+      results.calls.failed++
+    }
+  }
+
+  return NextResponse.json({ ok: true, ...results })
 }
