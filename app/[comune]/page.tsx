@@ -49,8 +49,8 @@ export default async function ComunePage({
         WHERE nome = ${comune.nome}
       `
       comune.ai_summary = ai.summary
-    } catch {
-      // silently skip — page renders without AI section
+    } catch (err) {
+      console.error('[AI] comune summary failed', comune.nome, err)
     }
   }
 

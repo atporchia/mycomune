@@ -39,8 +39,8 @@ export default async function ProgettoDetailPage({
       `
       project.ai_explanation = ai.explanation
       project.ai_suggested_questions = ai.questions
-    } catch {
-      // AI generation failed silently — page still renders without explanation
+    } catch (err) {
+      console.error('[AI] project explanation failed', project.id, err)
     }
   }
 
