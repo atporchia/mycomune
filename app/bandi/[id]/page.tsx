@@ -27,8 +27,8 @@ export default async function BandoDetailPage({
       `
       call.ai_explanation = ai.explanation
       call.ai_tips = ai.tips
-    } catch {
-      // silently skip — page renders without AI section
+    } catch (e) {
+      console.error('[AI bando] generation failed for id', id, e)
     }
   }
 
