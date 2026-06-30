@@ -14,7 +14,7 @@ export default async function BandoDetailPage({
   const [call] = await sql`SELECT * FROM funding_calls WHERE id = ${id} LIMIT 1`
   if (!call) notFound()
 
-  // Lazy AI generation on first visit
+  let aiError: string | null = null
   if (!call.ai_explanation && process.env.GOOGLE_AI_API_KEY) {
     try {
       const ai = await generateCallExplanation(call as Parameters<typeof generateCallExplanation>[0])
@@ -29,6 +29,7 @@ export default async function BandoDetailPage({
       call.ai_tips = ai.tips
     } catch (e) {
       console.error('[AI bando] generation failed for id', id, e)
+      aiError = e instanceof Error ? e.message : String(e)
     }
   }
 
@@ -130,9 +131,12 @@ export default async function BandoDetailPage({
             )}
           </>
         ) : (
-          <p className="text-sm text-emerald-600 italic">
-            La spiegazione verrà generata alla prima visita.
-          </p>
+          <div className="text-sm text-emerald-600 italic space-y-1">
+            <p>Spiegazione non disponibile.</p>
+            {aiError && (
+              <p className="text-xs text-red-500 font-mono break-all">{aiError}</p>
+            )}
+          </div>
         )}
       </section>
 
