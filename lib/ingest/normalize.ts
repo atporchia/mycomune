@@ -39,7 +39,9 @@ export interface NormalizedProject {
 
 function parseAmount(val: string | undefined): number | null {
   if (!val) return null
-  const n = parseFloat(val.replace(/\./g, '').replace(',', '.'))
+  // OpenPNRR CSV uses plain decimal notation (e.g. "542060775.00"), not
+  // Italian thousands-separator formatting — parse directly.
+  const n = parseFloat(val)
   return isNaN(n) ? null : n
 }
 
@@ -99,11 +101,14 @@ export function normalizeOpenPNRRRow(row: Record<string, string>): NormalizedPro
     return n !== null ? Math.round(n / comuniCount) : null
   }
 
+  const cupCode = pick(row, 'cup', 'CUP', 'codice_cup') ?? null
+
   const normalized: NormalizedProject = {
     project_id:           projectId,
     source:               'openpnrr',
-    source_url:           null,
-    cup_code:             pick(row, 'cup', 'CUP', 'codice_cup') ?? null,
+    // OpenCUP publishes a public detail page per CUP code — verified pattern.
+    source_url:           cupCode ? `https://opencup.gov.it/portale/progetto/-/cup/${cupCode}` : null,
+    cup_code:             cupCode,
     title,
     description:          pick(row, 'descrizione', 'DESCRIZIONE', 'OGGETTO', 'oggetto') ?? null,
     amount_total:         divideAmount(pick(row, 'finanziamento_totale', 'IMPORTO_TOTALE', 'importo_totale', 'finanziamento', 'IMPORTO', 'importo')),
