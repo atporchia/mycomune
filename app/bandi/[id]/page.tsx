@@ -75,11 +75,10 @@ export default async function BandoDetailPage({
           }
           highlight={days !== null && days >= 0 && days <= 14}
         />
-        <InfoBox
-          label="Budget totale"
-          value={call.budget_total ? formatEur(call.budget_total) : 'Non specificato'}
-        />
-        <InfoBox label="Importo per candidato" value={amountRange} />
+        {call.budget_total && (
+          <InfoBox label="Budget totale" value={formatEur(call.budget_total)} />
+        )}
+        {amountRange && <InfoBox label="Importo per candidato" value={amountRange} />}
         <InfoBox label="Stato" value={call.status === 'open' ? '✓ Aperto' : call.status} />
         <InfoBox label="Programma" value={call.program} />
       </div>
