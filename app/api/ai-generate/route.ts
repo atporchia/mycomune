@@ -41,9 +41,6 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.error(`AI generation failed for project ${project.id}:`, err)
       results.projects.failed++
-      if (results.projects.failed === 1) {
-        return NextResponse.json({ error: String(err), results }, { status: 500 })
-      }
     }
   }
 
